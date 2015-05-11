@@ -1,17 +1,5 @@
 #!/usr/bin/python2.7
 
-'''
-Classes to access and study Pst-I rep data.
-
-Datasets: 
-bisulfite_run9,
-bisulfite_run10,
-bisulfite_run11,
-bisulfite_run12,
-next_seq
-Use these project names to access BAM files.
- 
-'''
 import sys
 
 MY_PYTHON_LIBS = ['/data/safe/vsreeniv/lib/python2.7/site-packages',
