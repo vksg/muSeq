@@ -168,7 +168,7 @@ def flipErrorFunction(x, num_errors, unflipped, flipped):
 
 
 def clustering(ds, lam = 0.5, convergence_goal=100, 
-               max_iter = 100, min_iter = 5):
+               max_iter = 100, min_iter = 5, edge_fraction=False):
     start_time = time.time()
     n = ds.shape[0]
     
@@ -176,10 +176,15 @@ def clustering(ds, lam = 0.5, convergence_goal=100,
     A1 = np.zeros(shape=(n, n, n), dtype="float32")
     
     A_sum = np.copy(ds)
-    
+    log_edge = 0.0
     
     for i in xrange(max_iter):
-        iter_goal = GCExt.update_Amatrix32(A, ds, A_sum, A1, n, lam)
+        iter_goal = GCExt.update_Amatrix32(A, ds+log_edge, A_sum, A1, n, lam)
+        if edge_fraction:
+            blue_edges = np.sum((A_sum[upper_triangle] > 0))
+            red_edges = n*(n-1)/2 - blue_edges
+            log_edge = np.log(blue_edges) - np.log(red_edges)
+        
         if iter_goal >= convergence_goal and i >= min_iter:
             break
     
@@ -190,6 +195,38 @@ def clustering(ds, lam = 0.5, convergence_goal=100,
     comps =nx.connected_components(graph) 
         
     return comps, (iter_goal >= convergence_goal), i, (time.time() - start_time)
+
+
+def clusteringWithEdgeFraction(ds, lam = 0.5, convergence_goal=100, max_iter = 1000, min_iter = 5):
+    n = ds.shape[0]
+    
+    A = np.zeros(shape=(n, n, n))
+    A1 = np.zeros(shape=(n, n, n))
+    
+    A_sum = np.copy(ds)
+    ## initial condition that red and blue edges are equally likely
+    log_edge = 0.0
+    upper_triangle = np.triu_indices(n,1)
+    
+    t0 = time.time()
+    for i in xrange(max_iter):
+        iter_goal = GCExt.update_Amatrix(A, ds+log_edge, A_sum, A1, n, lam)
+        
+        blue_edges = np.sum((A_sum[upper_triangle] > 0))
+        red_edges = n*(n-1)/2 - blue_edges
+        
+        log_edge = np.log(blue_edges) - np.log(red_edges)
+        
+        if iter_goal >= convergence_goal and i >= min_iter:
+            break
+    
+    ## get connected components
+    graph = nx.Graph()
+    graph.add_edges_from(zip(*np.where(A_sum > 0)))
+    
+    comps =nx.connected_components(graph) 
+        
+    return comps, (iter_goal >= convergence_goal), i, (time.time() - t0)
         
 def getReads(bamreader, chrom_bin, ot_bits, ob_bits,
              bit_error_tol=0.05, bit_coverage = 0.90):
